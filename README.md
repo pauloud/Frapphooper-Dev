@@ -1,2 +1,2 @@
 # Fraphopper
-un petit jeu web pour frapper hooper
+Jeu web en cours de construction, de type tape-taupe, finalisation et mise en production prochaine
