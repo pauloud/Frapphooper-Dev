@@ -10,7 +10,7 @@ import Browser
 import Browser.Events as E
 import Svg.Events as Events
 import Random
-
+import Html.Lazy as Lazy 
 
 --VIEW
 sol =  let c = formeTaupiniere.c 
@@ -50,17 +50,22 @@ view memory =
                                     height <|String.fromFloat (pX  tailleTaupes (trou.y*2))] 
                                   [])-}
                                 [image
-                               [xlinkHref (case taupe.etat of 
-                                             Mobile _ -> "tete_hooper.png" 
-                                             _ -> "tete_hooper_touche.png"),
+                               ([xlinkHref (case (taupe.etat,taupe.typeTaupe) of 
+                                             (Mobile _ ,Gentil) -> "tete_hooper.png"
+                                             (Mobile _ , Mechant) -> "issou.png"
+                                             (Mort _, Gentil) -> "bien.png"
+                                             (Mort _, Mechant) -> "hoopWut.png"),
                                 transform ( String.concat ["translate (", 
-                                                            String.fromFloat <| .x <| positionTaupe trou taupe,
+                                                            String.fromInt <<ceiling <| .x <| positionTaupe trou taupe,
                                                             ",",
                                                             String.fromFloat <| .y <| positionTaupe trou taupe,")"]),
                                 width <| String.fromFloat (pX (tailleTaupes*ratioTaupes) trou.y),
-                                height <| String.fromFloat (pX  tailleTaupes (trou.y*2)),
-                                Events.onClick <| Kill trou.id
-                                ]
+                                height <| String.fromFloat (pX  tailleTaupes (trou.y*2))]
+                                ++ case taupe.etat of
+                                  Mobile _ -> [Events.onClick <| Kill trou.id taupe.typeTaupe]
+                                  Mort _ -> [])
+                                
+                                
                                []]
 
           in List.concat <| ME.values <|  List.map showTaupe (memory.taupiniere.trous)
@@ -68,7 +73,7 @@ view memory =
       trous = let projetterTrou trou = P.move (centreTrou trou).x (centreTrou trou).y (P.oval P.black (diametreX trou) (diametreY trou))
                                         in List.map (\trou -> P.renderShape <| projetterTrou trou) memory.taupiniere.trous
       --P.move (centreTrou trou).x (centreTrou trou).y (P.oval P.black (diametreX trou) (diametreY trou)
-        in List.concat [sol,trous,taupes,score,temps] 
+        in List.concat <| [sol,trous,taupes,score,temps] 
 
 -- INIT
 
@@ -87,12 +92,19 @@ memory0 = let trou0 x y = {taupe = Nothing, x = x , y = y, id = "", file = []}
                                 trous =    idTrousRec 1 [ trou0 (-ecartX) (-ecartY),trou0 0 (-ecartY), trou0 ecartX (-ecartY),
                                            trou0 (-ecartX) 0.0, trou0 0 0.0, trou0 ecartX 0.0,
                                            trou0 (-ecartX) ecartY, trou0 0.0 ecartY, trou0 ecartX ecartY] []}}
-init () = let taupeGenerator :Random.Generator (Float,Taupe)
-              taupeGenerator  = Random.map (\temps -> (toFloat temps,taupe0)) (Random.int 4 33)
+init () = let 
+              taupeGenerator tempsG typeG = Random.map2 (\temps typeTaupe -> (toFloat temps, {taupe0 | typeTaupe = typeTaupe})) 
+                                            tempsG
+                                            typeG
+    
               taupesGenerator : Random.Generator (List (List (Float,Taupe) ) )
-              taupesGenerator =  Random.list 9 <| Random.list 10 <| taupeGenerator
+              taupesGenerator =  Random.list 9 <| Random.map (List.sortBy <| (round << (/) 10) << Tuple.first) <| Random.map2 (++) 
+                                                               (Random.list 8 <| taupeGenerator (Random.int 15 33) 
+                                                                              <| Random.weighted (75,Gentil) [(25,Mechant)]) 
+                                                               (Random.list 8 <| taupeGenerator (Random.int 14 4) 
+                                                                              <| Random.weighted (60,Gentil) [(40,Mechant)]) 
                in (memory0, Random.generate Init <| Random.map 
-                                                     (List.map2 (\trou file -> {trou|file=file}) memory0.taupiniere.trous) 
+                                                     (List.map2 (\trou file -> {trou|file= file}) memory0.taupiniere.trous) 
                                                      taupesGenerator)
 
    
@@ -100,7 +112,7 @@ init () = let taupeGenerator :Random.Generator (Float,Taupe)
 
 main = Browser.document {init = init,
                          view =  \memory -> {title = "frapphooper",
-                                             body = [svg [viewBox "-650 -400  1200 1200"] (view memory)]},
+                                             body = [ (Lazy.lazy  <| svg [viewBox "-650 -400  1200 1200"]) (view memory)]},
                          update = \message memory -> (updateMemory message memory, Cmd.none),
 
                          subscriptions = \memory-> Sub.batch [E.onAnimationFrameDelta Tick]}

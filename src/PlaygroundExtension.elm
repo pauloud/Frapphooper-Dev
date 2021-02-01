@@ -20,7 +20,7 @@ tail list = case list of
              [] -> []
              (x::xs) -> xs
 toCmd message = Task.perform identity (Task.succeed message)
-toScreen : Float -> Float -> Screen
+toScreen : Float -> Float -> P.Screen
 toScreen width height =
   { width = width
   , height = height

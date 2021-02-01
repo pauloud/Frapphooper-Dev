@@ -64,16 +64,17 @@ positionTaupe  trou taupe = projection ((centreTrou trou).x - (diametreX trou)/4
                           
 -- MODEL/MEMORY
 type alias IdTrou = String 
-type Message = Kill IdTrou | Tick Float  | Init (List Trou) --| NouvelleTaupe Int 
+type Message = Kill IdTrou TypeTaupe | Tick Float  | Init (List Trou) --| NouvelleTaupe Int 
 type alias Partie =
   { score: Int,
     taupiniere: Taupiniere,
     tempsRestant: Float}
 type VitesseTaupe = MonteFloat
 type EtatTaupe = Mobile Float | Mort Int
-type SkinTaupe = Skin1 | Skin2
-type alias Taupe = {etat:EtatTaupe,skin :SkinTaupe,hauteur : Hauteur}
-taupe0 = Taupe (Mobile 1) Skin1 0 
+type TypeTaupe = Gentil | Mechant
+type alias Taupe = {etat:EtatTaupe,typeTaupe : TypeTaupe,hauteur : Hauteur}
+taupe0 = Taupe (Mobile 1) Gentil 0 
+mechant0 = {taupe0 | typeTaupe = Mechant}
 type alias Hauteur = Float
 type alias Trou = {taupe : Maybe Taupe, file: List (Float,Taupe) , x:Float, y:Float, id:IdTrou}
 type alias Taupiniere = {trous : List Trou}
@@ -118,9 +119,9 @@ updateMemory message memory = let
                                 then partieTerminee 
                                 else let taupiniere = memory.taupiniere
                                                     in case message of 
-                                                      Kill idTrou -> {memory| 
+                                                      Kill idTrou typeTaupe -> {memory| 
                                                                       taupiniere = { taupiniere | trous = List.map (tuerTaupe idTrou) taupiniere.trous}, 
-                                                                      score = memory.score + 1}
+                                                                      score = if typeTaupe == Gentil then memory.score + 1 else memory.score - 3 }
                                                       Tick deltaT -> {memory | taupiniere = {taupiniere | trous = List.map (suiteTaupe memory.tempsRestant)  taupiniere.trous},
                                                                                      tempsRestant = memory.tempsRestant-deltaT/1000}
                                                       Init trous -> {memory | taupiniere = Taupiniere trous}
