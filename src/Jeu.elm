@@ -36,8 +36,8 @@ centreTrou trou =  projection (trou.x + formeTaupiniere.oX, trou.y + formeTaupin
 
 --Perspective
 fenetreProjection = {oX = 0, oY = 0, longueur = 800, hauteur = 800}
-deformationHauteur = 0.5
-deformationLargeur = 0.25
+deformationHauteur = 1/4
+deformationLargeur = 1/4
 pente = 1
 pX o a = o*(fenetreProjection.hauteur/2 - deformationLargeur *  a) / (fenetreProjection.hauteur/2)
 pY c a = a + c *(fenetreProjection.longueur/2 - a * deformationHauteur) / (fenetreProjection.longueur/2) 
@@ -64,7 +64,7 @@ positionTaupe  trou taupe = projection ((centreTrou trou).x - (diametreX trou)/4
                           
 -- MODEL/MEMORY
 type alias IdTrou = String 
-type Message = Kill IdTrou TypeTaupe | Tick Float  | Init (List Trou) --| NouvelleTaupe Int 
+type Message = Kill IdTrou TypeTaupe | Tick Float  | Init (List Trou) | Start --| NouvelleTaupe Int 
 type alias Partie =
   { score: Int,
     taupiniere: Taupiniere,
@@ -73,12 +73,13 @@ type VitesseTaupe = MonteFloat
 type EtatTaupe = Mobile Float | Mort Int
 type TypeTaupe = Gentil | Mechant
 type alias Taupe = {etat:EtatTaupe,typeTaupe : TypeTaupe,hauteur : Hauteur}
-taupe0 = Taupe (Mobile 1) Gentil 0 
+taupe0 = Taupe (Mobile 0.8) Gentil 0 
 mechant0 = {taupe0 | typeTaupe = Mechant}
 type alias Hauteur = Float
 type alias Trou = {taupe : Maybe Taupe, file: List (Float,Taupe) , x:Float, y:Float, id:IdTrou}
-type alias Taupiniere = {trous : List Trou}
-taupiniereVide = Taupiniere []
+taupiniereVide = []
+type alias Taupiniere = List Trou 
+
 
 
 
@@ -87,7 +88,8 @@ persistanceCadavres = 90
 updateMemory : Message -> Partie -> Partie
 updateMemory message memory = let 
                                   tempsEcoule = memory.tempsRestant <=0 
-                                  partieTerminee = {memory|taupiniere = taupiniereVide}
+                                  viderTrou trou = {trou | taupe = Nothing, file = []}
+                                  partieTerminee = {memory|taupiniere = List.map viderTrou memory.taupiniere}
                                   tuerTaupe id trou = case trou.taupe of
                                               Nothing -> trou
                                               Just taupe -> if trou.id == id 
@@ -120,11 +122,12 @@ updateMemory message memory = let
                                 else let taupiniere = memory.taupiniere
                                                     in case message of 
                                                       Kill idTrou typeTaupe -> {memory| 
-                                                                      taupiniere = { taupiniere | trous = List.map (tuerTaupe idTrou) taupiniere.trous}, 
+                                                                      taupiniere =  List.map (tuerTaupe idTrou) taupiniere, 
                                                                       score = if typeTaupe == Gentil then memory.score + 1 else memory.score - 3 }
-                                                      Tick deltaT -> {memory | taupiniere = {taupiniere | trous = List.map (suiteTaupe memory.tempsRestant)  taupiniere.trous},
-                                                                                     tempsRestant = memory.tempsRestant-deltaT/1000}
-                                                      Init trous -> {memory | taupiniere = Taupiniere trous}
+                                                      Tick deltaT -> {memory | taupiniere =  List.map (suiteTaupe memory.tempsRestant)  taupiniere
+                                                                              ,tempsRestant = memory.tempsRestant-deltaT/1000}
+                                                      Init trous -> {memory | taupiniere = trous}
+                                                      _ -> memory 
                                                       {-NouvelleTaupe index -> {memory | taupiniere = {taupiniere | 
                                                                                   trous = nouvelleTaupe index taupiniere.trous,
                                                                                   nbTaupes = taupiniere.nbTaupes + 1}}-}
