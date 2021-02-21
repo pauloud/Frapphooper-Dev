@@ -37,7 +37,7 @@ centreTrou trou =  projection (trou.x + formeTaupiniere.oX, trou.y + formeTaupin
 --Perspective
 fenetreProjection = {oX = 0, oY = 0, longueur = 800, hauteur = 800}
 deformationHauteur = 1/4
-deformationLargeur = 1/4
+deformationLargeur = 1/2
 pente = 1
 pX o a = o*(fenetreProjection.hauteur/2 - deformationLargeur *  a) / (fenetreProjection.hauteur/2)
 pY c a = a + c *(fenetreProjection.longueur/2 - a * deformationHauteur) / (fenetreProjection.longueur/2) 
@@ -73,7 +73,7 @@ type VitesseTaupe = MonteFloat
 type EtatTaupe = Mobile Float | Mort Int
 type TypeTaupe = Gentil | Mechant
 type alias Taupe = {etat:EtatTaupe,typeTaupe : TypeTaupe,hauteur : Hauteur}
-taupe0 = Taupe (Mobile 0.8) Gentil 0 
+taupe0 = Taupe (Mobile 1.0) Gentil 0 
 mechant0 = {taupe0 | typeTaupe = Mechant}
 type alias Hauteur = Float
 type alias Trou = {taupe : Maybe Taupe, file: List (Float,Taupe) , x:Float, y:Float, id:IdTrou}
