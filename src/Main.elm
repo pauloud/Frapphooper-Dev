@@ -11,12 +11,17 @@ import Browser.Events as E
 import Svg.Events as Events
 import Random
 import Html.Lazy as Lazy 
-import Game.Ressources as R 
+import Game.TwoD as TD
+import Game.Resources as Resources exposing (Resources)
+import Game.TwoD.Render as Render exposing (Renderable) 
+import Game.TwoD.Camera as Camera
 
 --VIEW
 c = formeTaupiniere.c 
 oX = formeTaupiniere.oX
 oY = formeTaupiniere.oY
+renderConfig = {time = 0.0, size = (c,c), camera = Camera.fixedArea c (0,0)  }
+
  
 infosDebutants = [image [xlinkHref "tete_hooper.png"
                          ,transform <| P.renderTransform -100 200 0 0.3] []
@@ -35,19 +40,36 @@ sol =   [P.renderShape
          |> List.map (\(x,y) -> projection (y,x,0) |> X.point2DTuple)) 
           ]
 bouton texte =  [ rect [x <| String.fromInt -150, y <| String.fromInt (-350), width "300", height "75", fill "#00C0FF", Events.onClick Start] [], text_ [transform <| P.renderTransform (-100) 300 0 2.2,  Events.onClick Start] [text texte]]
+{-taupes : Model -> Partie ->  List (Svg Message)
+taupes model partie = let  
+                         texture : Taupe -> String
+                         texture taupe = case (taupe.etat,taupe.typeTaupe) of 
+                              (Mobile _ ,Gentil) -> "tete_hooper.png"
+                              (Mobile _ , Mechant) -> "issou.png"
+                              (Mort _, Gentil) -> "bien.png"
+                              (Mort _, Mechant) -> "hoopWut.png"
+                         sprite : Trou -> Taupe -> Render.Renderable           
+                         sprite trou taupe =  Render.spriteZ { texture = Resources.getTexture (texture taupe) model.ressources
+                                                    , position = (( positionTaupe trou taupe).x - diametreX trou, (positionTaupe  trou taupe).y - diametreY trou, 0 )
+                                                    , size = (pX (tailleTaupes*ratioTaupes) trou.y, pX  tailleTaupes (trou.y*2) ) }  
+                           in ME.values <| List.map (\trou -> case trou.taupe of 
+                                         Nothing -> Nothing
+                                         Just taupe -> Just <| TD.renderWithOptions [Events.onClick <| Kill trou.id taupe.typeTaupe] renderConfig [sprite trou taupe] )  
+                                partie.taupiniere-}
 viewPartie :  Partie -> List (Svg Message)
 viewPartie memory =
-  let 
+  let score : List (Svg Message)
       score = [P.words P.darkGreen (String.append "score : " (String.fromInt memory.score))
               |> (P.scale 2.2)
               |> P.move (formeTaupiniere.oX + formeTaupiniere.c/2 + 250) (formeTaupiniere.oY - formeTaupiniere.c/2)
               |> P.renderShape] 
+      temps : List (Svg Message)
       temps= [P.words P.red (String.append "tempsRestant : " (String.fromInt <| ceiling <| memory.tempsRestant))
               |> (P.scale 2)
               |> P.move (formeTaupiniere.oX + formeTaupiniere.c/2 + 230) (formeTaupiniere.oY - formeTaupiniere.c/2 + 50)
               |> P.renderShape] 
-      
-             
+     
+
       taupes = 
        let
         showTaupe : Trou -> Maybe (List (Svg Message))
@@ -80,24 +102,27 @@ viewPartie memory =
                                 
                                 
                                []] else Nothing
+                        in List.concat <| ME.values <|  List.map showTaupe (memory.taupiniere)
 
-          in List.concat <| ME.values <|  List.map showTaupe (memory.taupiniere)
-        
+          
+      trous : List (Svg Message) 
       trous = let projetterTrou trou = P.move (centreTrou trou).x (centreTrou trou).y (P.oval P.black (diametreX trou) (diametreY trou))
-                                        in List.map (\trou -> P.renderShape <| projetterTrou trou) memory.taupiniere
+                                         in List.map (\trou -> P.renderShape <| projetterTrou trou) memory.taupiniere
       --P.move (centreTrou trou).x (centreTrou trou).y (P.oval P.black (diametreX trou) (diametreY trou)
-        in List.concat <| [sol,trous,taupes,score,temps] 
+        in List.concat <| [sol,trous,score,temps,taupes] 
 
-view model = case model of 
-  Jeu partie -> viewPartie partie
-  Debut -> List.concat [sol,bouton "Démarrer",infosDebutants]
-  Fin partie -> List.concat [viewPartie partie, bouton "Rejouer"]
+view model = case model.etatJeu of 
+                      Jeu partie -> viewPartie partie
+                      Debut -> List.concat [sol,bouton "Démarrer",infosDebutants]
+                      Fin partie -> List.concat [viewPartie partie, bouton "Rejouer"]
+            
 
 
 -- INIT
 
 {--}
-type AppModel = Debut | Jeu Partie | Fin Partie 
+type EtatJeu = Debut | Jeu Partie | Fin Partie 
+type alias Model = {etatJeu : EtatJeu, ressources : Resources}
 {-
  viewApp appModel = case appModel of
   Debut -> [P.words P.darkGreen (String.append "Demarrer" (String.fromInt memory.score))
@@ -135,14 +160,18 @@ taupesGenerator =  Random.list 9 <| Random.map (List.sortBy <| (round << (/) 10)
 generationTaupes = Random.generate Init <| Random.map 
                                           (List.map2 (\trou file -> {trou|file= file}) memory0.taupiniere) 
                                           taupesGenerator                                                          
-init () =  (Debut, Cmd.none)
-update message model = case model of
-  Jeu partie ->  (updateMemory message partie |> if partie.tempsRestant <= 0 then Fin else Jeu
-                  , Cmd.none) 
-  _ -> case message of
-      Start -> ( Jeu <| Partie 0 taupiniereVide 30,generationTaupes)
-      _ -> (model, Cmd.none) 
+init () =  (Model Debut Resources.init, Cmd.map Resources <| Resources.loadTextures [ "tete_hooper.png", "issou.png", "bien.png", "hoopWut.png" ])
+update message model = let etatJeu = case model.etatJeu of
+                                     Jeu partie ->  updateMemory message partie |> if partie.tempsRestant <= 0 then Fin else Jeu
+                                            
+                                     _ -> case message of
+                                          Start -> Jeu <| Partie 0 taupiniereVide 30
+                                          _ -> model.etatJeu
 
+                           cmd = case message of
+                            Start -> generationTaupes
+                            _ -> Cmd.none
+                             in ({model| etatJeu = etatJeu},cmd)
 
    
 --MAIN

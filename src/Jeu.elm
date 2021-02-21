@@ -11,6 +11,7 @@ import Browser.Events as E
 import Svg.Events as Events
 import Time
 import Json.Decode as D
+import Game.Resources as Resources exposing (Resources)
 
 
 
@@ -64,7 +65,7 @@ positionTaupe  trou taupe = projection ((centreTrou trou).x - (diametreX trou)/4
                           
 -- MODEL/MEMORY
 type alias IdTrou = String 
-type Message = Kill IdTrou TypeTaupe | Tick Float  | Init (List Trou) | Start --| NouvelleTaupe Int 
+type Message = Kill IdTrou TypeTaupe | Tick Float  | Init (List Trou) | Start | Resources Resources.Msg 
 type alias Partie =
   { score: Int,
     taupiniere: Taupiniere,
