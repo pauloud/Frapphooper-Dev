@@ -15,6 +15,7 @@ import Game.TwoD as TD
 import Game.Resources as Resources exposing (Resources)
 import Game.TwoD.Render as Render exposing (Renderable) 
 import Game.TwoD.Camera as Camera
+import Json.Decode as D
 
 --VIEW
 c = formeTaupiniere.c 
@@ -75,7 +76,7 @@ viewPartie memory =
         showTaupe : Trou -> Maybe (List (Svg Message))
         showTaupe trou = case trou.taupe of
           Nothing -> Nothing 
-          Just taupe -> if taupe.hauteur > 5 then Just <|
+          Just taupe -> Just <|
                            {-X.withClipPath
                              (String.append "cpTaupeTrou" trou.id) 
                                (rect 
@@ -101,7 +102,7 @@ viewPartie memory =
                                   Mort _ -> [])
                                 
                                 
-                               []] else Nothing
+                               []] Nothing
                         in List.concat <| ME.values <|  List.map showTaupe (memory.taupiniere)
 
           
@@ -121,8 +122,8 @@ view model = case model.etatJeu of
 -- INIT
 
 {--}
-type EtatJeu = Debut | Jeu Partie | Fin Partie 
-type alias Model = {etatJeu : EtatJeu, ressources : Resources}
+type EtatJeu = Debut | Jeu Partie  | Fin Partie 
+type alias Model = {etatJeu : EtatJeu}
 {-
  viewApp appModel = case appModel of
   Debut -> [P.words P.darkGreen (String.append "Demarrer" (String.fromInt memory.score))
@@ -160,7 +161,7 @@ taupesGenerator =  Random.list 9 <| Random.map (List.sortBy <| (round << (/) 10)
 generationTaupes = Random.generate Init <| Random.map 
                                           (List.map2 (\trou file -> {trou|file= file}) memory0.taupiniere) 
                                           taupesGenerator                                                          
-init () =  (Model Debut Resources.init, Cmd.map Resources <| Resources.loadTextures [ "tete_hooper.png", "issou.png", "bien.png", "hoopWut.png" ])
+init () =  (Model Debut, Cmd.map Resources <| Cmd.none 
 update message model = let etatJeu = case model.etatJeu of
                                      Jeu partie ->  updateMemory message partie |> if partie.tempsRestant <= 0 then Fin else Jeu
                                             
@@ -177,9 +178,13 @@ update message model = let etatJeu = case model.etatJeu of
 --MAIN
 
 main = Browser.document {init = init,
-                         view =  \appModel -> {title = "frapphooper",
+                         view =  \model -> {title = "frapphooper",
                                              body = [ (Lazy.lazy  <| svg [viewBox "-650 -400  1200 1200"]) (view appModel)]},
                          update = update,
 
-                         subscriptions = \memory-> Sub.batch [E.onAnimationFrameDelta Tick]}
-                                                          
+                         subscriptions = \model-> Sub.batch [E.onAnimationFrameDelta Tick
+                                ,killsSubscription model]}
+killSubscription model = case model.etatJeu of 
+  Jeu Partie -> 
+  _ -> Sub.none 
+

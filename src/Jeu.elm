@@ -65,7 +65,7 @@ positionTaupe  trou taupe = projection ((centreTrou trou).x - (diametreX trou)/4
                           
 -- MODEL/MEMORY
 type alias IdTrou = String 
-type Message = Kill IdTrou TypeTaupe | Tick Float  | Init (List Trou) | Start | Resources Resources.Msg 
+type Message = Kill IdTrou TypeTaupe | Tick Float  | Init (List Trou) | Start | MouseMove Float Float
 type alias Partie =
   { score: Int,
     taupiniere: Taupiniere,
